@@ -1,0 +1,15 @@
+{
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/content-types",
+      "handler": "ContentTypes.createContentType",
+      "config": {
+        "policies": [
+          "global::is-content-type-created",
+          ["admin::hasPermissions", ["plugins::content-type-builder.read"]]
+        ]
+      }
+    }
+  ]
+}
