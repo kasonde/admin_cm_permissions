@@ -10,27 +10,43 @@
  * See more details here: https://strapi.io/documentation/developer-docs/latest/setup-deployment-guides/configurations.html#bootstrap
  */
 
-const getStoredData = async () => {
+const pluginStore = async (key, type) => {
   const configStore = strapi.store({
-    environment: strapi.config.environment,
-    name: "ct-created",
+    environment: null,
+    type: "core",
+    name: key,
   });
 
-  return await configStore.get({
-    key: "created-ct",
-  });
+  if (type === "get") {
+    return await configStore.get({
+      key,
+    });
+  } else {
+    return await configStore.set({
+      key,
+      value: null,
+    });
+  }
 };
 
 const setRolePermissions = async () => {};
 
 module.exports = async () => {
   // get the stored data
-  console.log(await strapi.query("permission", "admin").find());
+  let storedData = await pluginStore("ct-created", "get");
+  let uid;
+  if (storedData && storedData.contentType.name) {
+    uid = strapi.models[storedData.contentType.name].uid;
+  }
+  // console.log(await strapi.query("permission", "admin").find());
   // const role = await strapi.query("role", "admin").findOne({code: "strapi-author"});
   // await strapi.admin.services.role.assignPermissions(role.id, [{}])
-  let storedData = await getStoredData();
-  if (storedData) {
-    // find the role you want to edit
-    const roleCode = "strapi-editor"; // the role code is a combination of 'strapi' and the slug of the role name
-  }
+
+  console.log(storedData);
+  console.log(uid);
+  await pluginStore("ct-created");
+  // if (storedData) {
+  //   // find the role you want to edit
+  //   const roleCode = "strapi-editor"; // the role code is a combination of 'strapi' and the slug of the role name
+  // }
 };
