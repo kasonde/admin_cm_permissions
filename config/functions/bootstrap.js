@@ -32,21 +32,72 @@ const pluginStore = async (key, type) => {
 const setRolePermissions = async () => {};
 
 module.exports = async () => {
-  // get the stored data
+  // get the stored data from the core-store on content-type
   let storedData = await pluginStore("ct-created", "get");
-  let uid;
-  if (storedData && storedData.contentType.name) {
-    uid = strapi.models[storedData.contentType.name].uid;
-  }
-  // console.log(await strapi.query("permission", "admin").find());
-  // const role = await strapi.query("role", "admin").findOne({code: "strapi-author"});
-  // await strapi.admin.services.role.assignPermissions(role.id, [{}])
 
-  console.log(storedData);
-  console.log(uid);
-  await pluginStore("ct-created");
-  // if (storedData) {
-  //   // find the role you want to edit
-  //   const roleCode = "strapi-editor"; // the role code is a combination of 'strapi' and the slug of the role name
-  // }
+  if (storedData) {
+    // construct model UID on information from CTB
+    let uid;
+    if (storedData && storedData.contentType.name) {
+      uid = strapi.models[storedData.contentType.name].uid;
+    }
+
+    // Fetch all non-super admin roles
+    const roles = await strapi
+      .query("role", "admin")
+      .find({ code_ne: "strapi-super-admin" });
+
+    // Array of all permission action keys
+    const actionKeys = [
+      "plugins::content-manager.explorer.create",
+      "plugins::content-manager.explorer.read",
+      "plugins::content-manager.explorer.update",
+      "plugins::content-manager.explorer.delete",
+      "plugins::content-manager.explorer.publish",
+    ];
+
+    if (storedData.contentType && roles && uid) {
+      // Construct payload array to be looped through with promises
+      let payloads = [];
+
+      // Loop through all non-super admin role (Author, Editor, ect)
+      roles.forEach((role) => {
+        // Assign fields to properties (will grant role all permissions to all fields)
+        let attributeKeys = Object.keys(storedData.contentType.attributes);
+        let properties = { fields: attributeKeys };
+
+        // Construct new payload to push into array
+        let newPayload = {
+          subject: uid,
+          role: role.id,
+          properties,
+        };
+
+        // Loop through action keys to create all permissions
+        actionKeys.forEach((actionkey) => {
+          newPayload.action = actionkey;
+          payloads.push(newPayload);
+        });
+      });
+
+      // if (payloads[0]) {
+      //   console.log([...payloads]);
+      // }
+
+      // Process all payloads and update database
+      payloads.forEach(async (payload) => {
+        console.log("before", payload);
+        let data = await strapi.query("permission", "admin").create(payload);
+        console.log("after", data);
+      });
+      // Promise.all(
+      //   payloads.map(
+      //     async (payload) =>
+      //       await strapi.query("permission", "admin").create(payload)
+      //   )
+      // );
+    }
+    // remove key from core-store
+    await pluginStore("ct-created");
+  }
 };
